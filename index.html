@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ParkirKita</title>
+
+<style>
+    *{box-sizing:border-box}body{margin:0;background:#f2f5fa;color:#17243a;font-family:Arial,sans-serif}
+    header{background:#173b70;color:white;padding:22px max(18px,calc((100% - 1050px)/2))}
+    header h1{margin:0 0 6px}header p{margin:0;color:#dce8fa}
+    main{max-width:1050px;margin:24px auto;padding:0 18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    button,select,input{font:inherit;padding:10px 13px;border:1px solid #ccd5e2;border-radius:8px}button{background:#1e5aa8;color:white;border:0;cursor:pointer}
+    .secondary{background:#e5edf8;color:#173b70}.hidden{display:none!important}.summary{display:flex;gap:12px;margin:18px 0;flex-wrap:wrap}
+    .summary div,.card,.panel{background:white;padding:17px;border-radius:12px;box-shadow:0 2px 9px #14213d0d}
+    .summary div{min-width:160px}.summary b{display:block;font-size:26px;margin-top:5px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:15px}.card h3{margin:0 0 6px}
+    .muted{color:#68758a;font-size:14px}.number{font-size:30px;font-weight:bold;margin:13px 0 4px}
+    .status{display:inline-block;padding:6px 10px;border-radius:20px;background:#e4f5e9;color:#176b35;font-size:13px}
+    .full{background:#fde8e8;color:#a52222}.low{background:#fff2d8;color:#895900}
+    .bar{height:9px;background:#e9eef5;border-radius:9px;overflow:hidden;margin:12px 0}.bar span{display:block;height:100%;background:#2876c7}
+    .panel{margin:18px 0}input{display:block;width:100%;margin:8px 0 12px}.actions{display:flex;gap:8px;margin-top:12px}.actions button{flex:1}
+    table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:9px;border-bottom:1px solid #edf0f4;font-size:14px}
+    #msg{background:#fff0ce;padding:11px;border-radius:8px;margin:12px 0}
+
+    /* Dashboard Admin */
+    #adminPanel h2 {
+        color: #173b70;
+        margin-bottom: 8px;
+    }
+
+    #adminPanel h3 {
+        margin-top: 20px;
+        margin-bottom: 12px;
+        color: #173b70;
+    }
+
+    #adminPanel hr {
+        border: 0;
+        border-top: 1px solid #e5eaf0;
+        margin: 24px 0;
+    }
+
+    #adminPanel canvas {
+        max-width: 100%;
+    }
+
+    #adminPanel table button {
+        padding: 7px 10px;
+        font-size: 12px;
+        margin: 2px;
+    }
+
+    button:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+    }
+
+    @media(max-width:600px) {
+        main {
+            margin: 15px auto;
+        }
+
+        .summary div {
+            flex: 1;
+            min-width: 130px;
+        }
+
+        td, th {
+            font-size: 12px;
+            padding: 7px;
+        }
+    }
+</style>
+
+</head>
+
+<body>
+    <header>
+        <h1>🅿️ ParkirKita</h1><p>Sistem Monitoring Ketersediaan Slot Parkir Cerdas Kampus</p>
+    </header>
+
+    <main>
+        <div class="top">
+            <div>
+                <h2 style="margin-bottom:4px">Ketersediaan Parkir</h2>
+                <span class="muted">Data diperbarui otomatis setiap 5 detik</span>
+            </div>
+            <div>
+                <button id="loginBtn" onclick="document.getElementById('loginPanel').classList.remove('hidden')">Login Petugas</button>
+                <button id="logoutBtn" class="secondary hidden" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div id="msg" class="hidden"></div>
+
+        <div class="summary">
+            <div>Slot motor kosong<b id="motorTotal">0</b></div>
+            <div>Slot mobil kosong<b id="mobilTotal">0</b></div>
+        </div>
+
+        <div class="top">
+            <h3>Daftar Area Parkir</h3>
+            <select id="filter" onchange="refresh()">
+                <option value="semua">Semua kendaraan</option>
+                <option value="motor">Motor</option>
+                <option value="mobil">Mobil</option>
+            </select>
+        </div>
+
+        <section id="areas" class="grid"></section>
+        
+        <section id="loginPanel" class="panel hidden">
+            <h3>Login Petugas</h3>
+            
+            <form onsubmit="login(event)">
+                <label>Username</label>
+                    <input id="username" required value="petugas1">
+                <label>Password</label>
+                    <input id="password" type="password" required>
+                    
+                    <button type="submit">Masuk</button> 
+                    <button type="button" class="secondary" onclick="loginPanel.classList.add('hidden')">Batal</button>
+            </form>
+
+            <p class="muted">Akun demo: petugas1 / parkir123</p>
+        </section>
+
+        <section id="staffPanel" class="panel hidden">
+            <h3>Panel Petugas</h3>
+            <p id="staffName" class="muted"></p>
+            <h4>Riwayat pencatatan</h4>
+            <input
+                type="text"
+                id="searchHistory"
+                placeholder="Cari nama area atau kendaraan..."
+                oninput="filterHistory()">
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Area</th>
+                        <th>Aksi</th>
+                        <th>Jumlah terisi</th>
+                    </tr>
+                </thead>
+                <tbody id="events"></tbody>
+            </table>
+        </div>
+        </section>
+
+        <!-- PANEL ADMIN -->
+         <section id="adminPanel" class="panel hidden">
+            <h2>Dashboard Admin</h2>
+            <p class="muted">
+                Pengelolaan dan statistik area parkir ParkirKita.
+            </p>
+
+            <h3>Statistik Kepadatan Parkir</h3>
+
+            <div id="adminStats" class="summary"></div>
+
+            <h3>Grafik Kendaraan</h3>
+
+            <div class="card">
+                <canvas id="parkingChart"
+                        width="700"
+                        height="260"
+                        style="width: 100%; height: auto;">
+                </canvas>
+            </div>
+
+            <hr>
+
+            <h3> Tambah Area Parkir</h3>
+
+            <form onsubmit="addArea(event)">
+                <label>Nama Area</label>
+                <input id="areaName" required
+                       placeholder="Contoh: Motor Gedung A">
+                
+                <label>Lokasi</label>
+                <input id="areaLocation" required
+                       placeholder="Contoh: Gedung A">
+
+                <label>Jenis Kendaraan</label>
+                <select id="areaType" required>
+                    <option value="motor">Motor</option>
+                    <option value="mobil">Mobil</option>
+                </select>
+
+                <label>Kapasitas</label>
+                <input id="areaCapacity" type="number"
+                       min="1" required>
+
+                <button type="submit">Tambah Area</button>
+            </form>
+            <hr>
+            <h3>Daftar Area Parkir</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Area</th>
+                            <th>Kapasitas</th>
+                            <th>Terisi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminAreas"></tbody>
+                </table>
+            </div>
+         </section>
+    </main>
+
+<script>
+    let logged=false;
+    let currentUser = null; 
+    let previousStatuses = {};
+    function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    function msg(t){let x=document.getElementById('msg');x.textContent=t;x.classList.remove('hidden');setTimeout(()=>x.classList.add('hidden'),3500)}
+    async function api(url,opt={}){let r=await fetch(url,{...opt,headers:{'Content-Type':'application/json'}});let d=await r.json();if(!r.ok)throw Error(d.error||'Terjadi kesalahan');return d}
+    async function login(e) { 
+ 
+        e.preventDefault(); 
+
+        try { 
+
+            const d = await api('/api/login', { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    username: username.value, 
+                    password: password.value 
+                }) 
+            }); 
+
+            const session = await api('/api/me'); 
+
+            currentUser = session; 
+            logged = true; 
+
+            loginPanel.classList.add('hidden'); 
+
+            auth(); 
+
+            msg(d.message); 
+
+            refresh(); 
+
+        } catch (error) { 
+            msg(error.message); 
+        } 
+    } 
+    async function logout() { 
+ 
+        try { 
+
+            await api('/api/logout', { 
+                method: 'POST', 
+                body: '{}' 
+            }); 
+
+            logged = false; 
+            currentUser = null; 
+
+            auth(); 
+
+            msg('Logout berhasil'); 
+
+            refresh(); 
+
+        } catch (error) { 
+            msg(error.message); 
+        } 
+    } 
+    function auth() { 
+ 
+        loginBtn.classList.toggle('hidden', logged); 
+        logoutBtn.classList.toggle('hidden', !logged); 
+
+        staffPanel.classList.toggle( 
+            'hidden', 
+            !logged || !currentUser || 
+            !['petugas', 'admin'].includes(currentUser.role) 
+        ); 
+
+        adminPanel.classList.toggle( 
+            'hidden', 
+            !logged || !currentUser || 
+            currentUser.role !== 'admin' 
+        ); 
+    }
+    async function action(id,kind){try{let d=await api(`/api/areas/${id}/${kind}`,{method:'POST',body:JSON.stringify({jumlah:1})});msg(d.message);refresh()}catch(x){msg(x.message)}}
+    async function refresh(){
+        try{
+            let d=await api('/api/areas?jenis='+filter.value);
+                motorTotal.textContent=d.ringkasan.motor;
+                mobilTotal.textContent=d.ringkasan.mobil;
+                areas.innerHTML=d.areas.map(a=>{let cl=a.status==='Penuh'?'full':a.status==='Hampir penuh'?'low':'';
+            let p=Math.round(a.terisi/a.kapasitas*100);
+
+            if (previousStatuses[a.id] && 
+                previousStatuses[a.id] !== a.status) { 
+            
+                if (a.status === 'Penuh') { 
+                    msg(a.nama + ' sekarang penuh!'); 
+                } 
+            
+                else if (a.status === 'Tersedia') { 
+                    msg(a.nama + ' sekarang tersedia kembali!'); 
+                } 
+            
+                else if (a.status === 'Hampir penuh') { 
+                    msg(a.nama + ' hampir penuh!'); 
+                } 
+            } 
+            
+            previousStatuses[a.id] = a.status;
+
+        return `<article class="card">
+        <h3>${esc(a.nama)}</h3>
+        <div class="muted">${esc(a.lokasi)} • ${a.jenis}</div>
+        <div class="number">${a.sisa}<span style="font-size:14px;font-weight:normal"> slot tersisa</span></div>
+        <div class="muted">${a.terisi} terisi dari ${a.kapasitas} slot</div>
+        <div class="bar"><span style="width:${p}%"></span></div>
+        <span class="status ${cl}">${a.status}</span>${logged?`
+            <div class="actions">
+                <button onclick="action(${a.id},'masuk')" ${a.sisa===0?'disabled':''}>＋ Masuk</button>
+                <button class="secondary" onclick="action(${a.id},'keluar')" ${a.terisi===0?'disabled':''}>－ Keluar</button></div>`:''}</article>`}).join('');
+    
+    
+    if(logged){ 
+ 
+        let h = await api('/api/events'); 
+
+        staffName.textContent = 
+            'Login sebagai ' + h.nama + ' (' + h.role + ')'; 
+
+        events.innerHTML = h.events.map(x => ` 
+            <tr> 
+                <td>${esc(x.waktu)}</td> 
+                <td>${esc(x.area)}</td> 
+                <td>${esc(x.jenis)} ${x.jumlah}</td> 
+                <td>${x.sebelum} → ${x.sesudah}</td> 
+            </tr> 
+        `).join(''); 
+
+        } 
+
+        if (logged && currentUser && 
+        currentUser.role === 'admin') { 
+
+        await loadAdminAreas(); 
+
+        await loadAdminStats(); 
+
+    }
+    }catch(x){msg(x.message)}}
+    checkSession(); 
+ 
+    setInterval(refresh, 5000); 
+
+    async function addArea(e) {
+        e.preventDefault();
+
+        try {
+            const data = {
+                nama: document.getElementById('areaName').value.trims(),
+                lokasi: document.getElementById('areaLocation').value.trims(),
+                jenis: document.getElementById('areaType').value,
+                kapasitas: Number(
+                    document.getElementById('areaCapacity').value
+                )
+            };
+
+            const result = await api('/api/admin/areas', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            msg(result.message);
+
+            e.target.reset();
+
+            refresh();
+        }
+
+        catch (error) 
+        {
+            msg(error.message);
+        }
+    }
+
+    async function editArea(id) { 
+ 
+        try { 
+
+            const result = await api('/api/areas?jenis=semua'); 
+
+            const area = result.areas.find(a => a.id === id); 
+
+            if (!area) { 
+                msg('Area tidak ditemukan.'); 
+                return; 
+            } 
+
+            const nama = prompt('Nama area:', area.nama); 
+            if (nama === null) return; 
+
+            const lokasi = prompt('Lokasi:', area.lokasi); 
+            if (lokasi === null) return; 
+
+            const kapasitas = prompt( 
+                'Kapasitas:', 
+                area.kapasitas 
+            ); 
+
+            if (kapasitas === null) return; 
+
+            const response = await api( 
+                `/api/admin/areas/${id}/update`, 
+                { 
+                    method: 'POST', 
+                    body: JSON.stringify({ 
+                        nama: nama.trims(), 
+                        lokasi: lokasi.trims(), 
+                        kapasitas: Number(kapasitas) 
+                    }) 
+                } 
+            ); 
+
+            msg(response.message); 
+
+            refresh(); 
+
+        } catch (error) { 
+            msg(error.message); 
+        } 
+    }
+
+    async function toggleArea(id) {
+        
+        if (!confirm("Apakah kamu yakin ingin mengubah status area ini?")) {
+            return;
+        }
+
+        try {
+            const result = await api(
+                `/api/admin/areas/${id}/toggle`,
+                {
+                    method: 'POST',
+                    body: '{}'
+                }
+            );
+
+            msg(result.message);
+            refresh();
+        }
+
+        catch (error)
+        {
+            msg(error.message);
+        }
+    }
+
+    async function loadAdminAreas() {
+        
+        const result = await api('/api/areas?jenis=semua');
+
+        const tbody = document.getElementById('adminAreas');
+
+        tbody.innerHTML = result.areas.map(a => `
+            <tr>
+                <td>
+                    ${esc(a.nama)}
+                    <br>
+                    <small>${esc(a.lokasi)}</small>
+                </td>
+
+                <td>${a.kapasitas}</td>
+
+                <td>${a.terisi}</td>
+
+                <td> 
+                    <button onclick="editArea(
+                        ${a.id},
+                        '${esc(a.nama)}',
+                        '${esc(a.lokasi)}',
+                        ${a.kapasitas}
+                    )">
+                        Edit
+                    </button>
+
+                    <button class="secondary"
+                        onclick="toggleArea(${a.id})">
+                        Nonaktifkan
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadAdminStats() {
+        
+        const result = await api('/api/admin/stats');
+
+        const container = document.getElementById('adminStats');
+
+        container.innerHTML = result.statistik.map(s => `
+            <div> 
+                ${esc(s.jenis.toUpperCase())}
+                <b>${s.terisi} / ${s.kapasitas}</b>
+                <small>${s.sisa} slot tersedia</small>
+            </div>
+        `).join('');
+        
+        drawParkingChart(result.statistik);
+    }
+
+    function drawParkingChart(data) { 
+ 
+        const canvas = document.getElementById('parkingChart'); 
+        const ctx = canvas.getContext('2d'); 
+
+        const width = canvas.width; 
+        const height = canvas.height; 
+
+        ctx.clearRect(0, 0, width, height); 
+
+        const padding = 55; 
+        const chartHeight = height - 90; 
+        const max = Math.max( 
+            1, 
+            ...data.map(x => x.kapasitas) 
+        ); 
+
+        const barWidth = 100; 
+        const gap = 100; 
+
+        ctx.font = '14px Arial'; 
+        ctx.fillStyle = '#17243a'; 
+
+        data.forEach((item, index) => { 
+
+            const x = padding + index * (barWidth + gap); 
+
+            const filledHeight = 
+                (item.terisi / max) * chartHeight; 
+
+            const emptyHeight = 
+                (item.sisa / max) * chartHeight; 
+
+            const baseY = height - 45; 
+
+            // Bagian kendaraan terisi 
+            ctx.fillStyle = '#2876c7'; 
+
+            ctx.fillRect( 
+                x, 
+                baseY - filledHeight, 
+                barWidth, 
+                filledHeight 
+            ); 
+
+            // Bagian slot kosong 
+            ctx.fillStyle = '#a9d7f5'; 
+
+            ctx.fillRect( 
+                x, 
+                baseY - filledHeight - emptyHeight, 
+                barWidth, 
+                emptyHeight 
+            ); 
+
+            // Nama kendaraan 
+            ctx.fillStyle = '#17243a'; 
+
+            ctx.textAlign = 'center'; 
+
+            ctx.fillText( 
+                item.jenis.toUpperCase(), 
+                x + barWidth / 2, 
+                height - 15 
+            ); 
+
+            // Jumlah kendaraan 
+            ctx.fillText( 
+                `${item.terisi}/${item.kapasitas}`, 
+                x + barWidth / 2, 
+                baseY - chartHeight - 10 
+            ); 
+        }); 
+
+        ctx.textAlign = 'left'; 
+
+        ctx.fillStyle = '#2876c7'; 
+        ctx.fillRect(430, 20, 13, 13); 
+
+        ctx.fillStyle = '#17243a'; 
+        ctx.fillText('Terisi', 450, 31); 
+
+        ctx.fillStyle = '#a9d7f5'; 
+        ctx.fillRect(520, 20, 13, 13); 
+
+        ctx.fillStyle = '#17243a'; 
+        ctx.fillText('Kosong', 540, 31); 
+    } 
+
+    async function checkSession() { 
+ 
+        try { 
+
+            const result = await api('/api/me'); 
+
+            logged = result.logged_in; 
+            currentUser = logged ? result : null; 
+
+            auth(); 
+
+            refresh(); 
+
+        } catch (error) { 
+
+            logged = false; 
+            currentUser = null; 
+
+            auth(); 
+            refresh(); 
+        } 
+    } 
+
+    function filterHistory() { 
+ 
+        const keyword = document 
+            .getElementById('searchHistory') 
+            .value.toLowerCase(); 
+
+        const rows = document.querySelectorAll('#events tr'); 
+
+        rows.forEach(row => { 
+
+            const content = row.textContent.toLowerCase(); 
+
+            row.style.display = 
+                content.includes(keyword) ? '' : 'none'; 
+        }); 
+    } 
+
+</script>
+
+</body>
+
+</html>
